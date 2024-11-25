@@ -1,24 +1,16 @@
 import os
-import json
-import copy
-import results
 from time import ctime
 from torch.optim import Adam
-from itertools import product
 
-from datas import MODEL_DATA_MAP
-from models import MODEL_MODEL_MAP
-from settings import MODEL_SETTING_MAP
-import settings
-from settings.basic_settings import BasicSettings
-import models
-from utils.recorder import Recorder
-from utils.evaluator import Evaluator
+from cft import CFT
+from data_cft import DataCFT
+from basic_settings import BasicSettings
+from recorder import Recorder
+from evaluator import Evaluator
 
-import datas
 
 class Trainer:
-    def __init__(self, params: settings.basic_settings.BasicSettings) -> None:
+    def __init__(self, params) -> None:
         self.params = params
         self.recorder = Recorder()
         self.Path_Init()
@@ -46,14 +38,14 @@ class Trainer:
         self.setting_save_path = os.path.join(setting_root, 
                                              timestamp+".json")
     
-    def Get_Train_Loader(self, data:datas.data.DataBasic):
+    def Get_Train_Loader(self, data):
         if self.params.model_name in ("dns", 'ssm', 'cft'):
             return data.Get_Train_Loader(self.params.batch_size, self.params.neg_c)
         
         return data.Get_Train_Loader(self.params.batch_size)
 
-    def Train_BP(self, model:models.abstract.AbstractCFRecommender, 
-                 data:datas.data.DataBasic):
+    def Train_BP(self, model, 
+                 data):
         
         params = self.params
         optimizer = Adam(model.parameters(), lr = params.lr)
@@ -109,8 +101,8 @@ class ModelDataParameterFactor:
         pass
 
     @staticmethod
-    def get_model_params(data: datas.data.DataBasic, 
-                         params:settings.BasicSettings):
+    def get_model_params(data, 
+                         params):
         if params.model_name in ['cft']:
             return (data.user_num, data.item_num, 
                     data.sse(params.sse_dim, params.sse_type), 
@@ -120,38 +112,15 @@ class ModelDataParameterFactor:
         else:
             raise KeyError("Parameter not found")
     
-    # @staticmethod
-    # def params_reset(params:settings.basic_settings.BasicSettings
-    #                 , param_dict:dict):
-
-    #     search_tuples = []
-    #     for k, v in param_dict.items():
-    #         if type(v) == list: 
-
-    #             vs = [ModelDataParameterFactor.params_type_conversion(k, vi) for vi in v]
-    #             search_tuples.append([(k, vi) for vi in vs])
-    #         else: 
-    #             v = ModelDataParameterFactor.params_type_conversion(k, v)
-    #             setattr(params, k, v)
-
-    #     params_list = [] 
-    #     for param_tuple in product(*search_tuples):
-    #         temp_params = copy.copy(params)
-    #         for k, v in param_tuple:
-    #             setattr(params, k, v)
-    #         params_list.append(temp_params)
-
-    #     return params_list
-    
     @staticmethod
     def get_model_data_by_params(params:BasicSettings):
         model_name = params.model_name
         data_name = params.data_name
-        data = MODEL_DATA_MAP[model_name](data_name)
+        data = DataCFT(data_name)
 
         model_params = ModelDataParameterFactor.get_model_params(data, params)
 
-        model =  MODEL_MODEL_MAP[model_name](*model_params)
+        model =  CFT(*model_params)
         return model, data
 
 
