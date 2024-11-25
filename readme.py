@@ -8,24 +8,9 @@
 2. How to train models?
 Open the console of this directory and run the following command:
 [python train.py --data_name [dataset_name] --model_name [model_name]]
-
-3. How to check trained models' performance?
-Open the console of this directory and run the following command:
-[python p_view.py]
-Then you will see a menu:
-
-
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-
-1. best setting of model
-2. hyperparameter analysis 
-3. show all 
-4. delete model record 
-5. training curve show
-
- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 
-
- Enter 3 to show all models' performance.
+For example:
+you can run command "python train.py --data_name ml_1m --model_name cft" to train
+the CFT model on the ml_1m dataset.
 
 """
   

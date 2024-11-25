@@ -81,16 +81,16 @@ class Trainer:
                 eval_dict = Evaluator.Training_Evaluate(model.predict(params.topk, uid_rated_items), testlabels)
                 earlystop = self.recorder.Performance_Record(epoch, eval_dict)
                 if earlystop == 1:
-                    print("参数保存 | 训练记录保存")
+                    print("Parameter Save | Training Record Save")
                     params.Save(self.setting_save_path)
                     self.recorder.Save(self.record_save_path)
-
+                    self.recorder.show_best_performance()
                     print("Early Stop")
                     break
                 elif earlystop == -1:
                     print("Stagnanting")
                 else:
-                    print("模型保存 | 参数保存 | 训练记录保存")
+                    print("[Performance Improved]")
                     model.save(self.model_save_path)
                     params.Save(self.setting_save_path)
                     self.recorder.Save(self.record_save_path)
@@ -102,7 +102,7 @@ class Trainer:
         eval_dict = Evaluator().Training_Evaluate(model.predict(params.topk, 
                                                                 uid_rated_items), 
                                                  testlabels)
-        print(f"{params.model_name}-{params.data_name}模型性能",eval_dict)
+        print(f"{params.model_name}-{params.data_name} performance", eval_dict)
         
 class ModelDataParameterFactor:
     def __init__(self):
@@ -111,57 +111,37 @@ class ModelDataParameterFactor:
     @staticmethod
     def get_model_params(data: datas.data.DataBasic, 
                          params:settings.BasicSettings):
-        if params.model_name in ['bpr', 'dns', "directau"]:
-            return (data.user_num, data.item_num, params)
-        elif params.model_name in ['lightgcn', "simgcl", "tag_cf", 
-                                   'transgnn', "ssm"]:
-            return (data.user_num, data.item_num, data.Load_A_norm(), 
-                    params)
-        elif params.model_name in ['sgformer']:
-            return (data.user_num, data.item_num, data.edges, data.Load_A_norm(), 
-                    params)
-        elif params.model_name in ['gat']:
-            return (data.user_num, data.item_num, data.ratings, 
-                    params)
-        elif params.model_name in ['cft']:
+        if params.model_name in ['cft']:
             return (data.user_num, data.item_num, 
                     data.sse(params.sse_dim, params.sse_type), 
                     data.pathes_ptypes(params.walk_len, params.path_num, 
                                        params.with_neg_edges),
                     params)
-        elif params.model_name in ['sigformer']:
-            return (data.user_num, data.item_num, 
-                    data.SSE(params.alpha, params.sse_dim),
-                    data.SPE(params.sample_hop),
-                    params)
         else:
-            raise KeyError("模型参数设置")
+            raise KeyError("Parameter not found")
     
-    @staticmethod
-    def params_reset(params:settings.basic_settings.BasicSettings
-                    , param_dict:dict):
-        # 需要训练的模型参数param_dict, 其中value为list，若长度为1，
-        # 则表示重新设置模型参数，否则表示对列表内的参数进行超参数搜索
+    # @staticmethod
+    # def params_reset(params:settings.basic_settings.BasicSettings
+    #                 , param_dict:dict):
 
-        search_tuples = []# element: (k, vi)
-        for k, v in param_dict.items():
-            if type(v) == list: # 列表表示多参数搜索
-                # 类型转换
-                vs = [ModelDataParameterFactor.params_type_conversion(k, vi) for vi in v]
-                search_tuples.append([(k, vi) for vi in vs])
-            else: # 重置参数
-                # 参数类型转换，将json中读取的字符型参数值进行相应转换
-                v = ModelDataParameterFactor.params_type_conversion(k, v)
-                setattr(params, k, v)
-        # 搜索空间展开
-        params_list = [] 
-        for param_tuple in product(*search_tuples):
-            temp_params = copy.copy(params)
-            for k, v in param_tuple:
-                setattr(params, k, v)
-            params_list.append(temp_params)
+    #     search_tuples = []
+    #     for k, v in param_dict.items():
+    #         if type(v) == list: 
 
-        return params_list
+    #             vs = [ModelDataParameterFactor.params_type_conversion(k, vi) for vi in v]
+    #             search_tuples.append([(k, vi) for vi in vs])
+    #         else: 
+    #             v = ModelDataParameterFactor.params_type_conversion(k, v)
+    #             setattr(params, k, v)
+
+    #     params_list = [] 
+    #     for param_tuple in product(*search_tuples):
+    #         temp_params = copy.copy(params)
+    #         for k, v in param_tuple:
+    #             setattr(params, k, v)
+    #         params_list.append(temp_params)
+
+    #     return params_list
     
     @staticmethod
     def get_model_data_by_params(params:BasicSettings):
@@ -174,26 +154,5 @@ class ModelDataParameterFactor:
         model =  MODEL_MODEL_MAP[model_name](*model_params)
         return model, data
 
-
-# 加载训练好的模型
-def load_model(model_name:str,  data_name:str):
-    # 加载参数，模型代码，数据
-    params = MODEL_SETTING_MAP[model_name](data_name)
-    model, data = ModelDataParameterFactor.get_model_data_by_params(params)
-    # 获取已经训练好的模型参数(最优)
-    best_rs = max(results.Results.load_rs_by_filter({"model_name":model_name, "data_name":data_name}))
-    print("模型加载路径:", best_rs.model_path)
-    model.load(best_rs.model_path)
-    Trainer.model_eval(model, params, data)
-    return model
-    
-    
-if __name__ == "__main__":
-    from models import ALL_MODELS
-    for model in ALL_MODELS:
-        print(model)
-        load_model(model, "ml_1m")
-    pass
-    
 
     
